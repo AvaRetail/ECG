@@ -25,7 +25,7 @@ class ECGSequence():
             end_idx = len(self.x)
         self.start_idx = start_idx
         self.end_idx = end_idx
-        # self.device = device
+        # self.exam_id = None
         
         if path_to_csv is None:
             self.y = None
@@ -38,7 +38,7 @@ class ECGSequence():
                 labels[label] = labels[label].apply(lambda x: 1 if x==True else 0)
 
             self.y = labels.to_numpy()
-            self.exam_id = pd_results.index
+            self.exam_id = exam_id
 
 
     @property
@@ -52,7 +52,7 @@ class ECGSequence():
             return np.array(self.x[start:end, :, :])
         else:
             # return np.array(self.x[start:end, :, :]), np.array(self.y[start:end])
-            return torch.Tensor(self.x[start:end, :, :]).permute(0,2,1), torch.from_numpy(self.y[start:end])
+            return torch.Tensor(self.x[start:end, :, :]).permute(0,2,1)#, torch.from_numpy(self.y[start:end])
         
 
     def __len__(self):
