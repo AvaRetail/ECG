@@ -13,8 +13,8 @@ def main():
 
     # with split returns Dataset
     # without split return DatasetDict
-    data = load_dataset("imagefolder",data_dir=data_root_fldr,split="train", save_infos=True) 
-    data = data.train_test_split(test_size=0.05)
+    data = load_dataset(data_root_fldr,split="train") 
+    data = data.train_test_split(test_size=0.02)
 
     labels = data["train"].features["label"].names
     label2id, id2label = {}, {}
@@ -60,13 +60,13 @@ def main():
         return accuracy.compute(predictions=predictions, references=labels)
 
     training_args = TrainingArguments(
-        output_dir="my_awesome_food_model",
+        output_dir=r"C:\Users\ATI-G2\Documents\python\ECG\weights\viT-b-16",
         remove_unused_columns=False,
         evaluation_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=2,
         learning_rate=5e-5,
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=16,
         gradient_accumulation_steps=4,
         per_device_eval_batch_size=4,
         num_train_epochs=100,
@@ -90,8 +90,9 @@ def main():
 
 
 if __name__ == "__main__":
-    data_root_fldr = r"C:\Users\ATI-G2\Documents\python\ECG\Transformers\data"
+    data_root_fldr = r"C:\Users\ATI-G2\Documents\python\ECG\data\vit-data"
 
     checkpoint = "google/vit-base-patch16-224-in21k"
+    # checkpoint = r"C:\Users\ATI-G2\Documents\python\ECG\my_awesome_food_model\checkpoint-4976"
 
     main()
