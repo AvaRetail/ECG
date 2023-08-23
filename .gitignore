@@ -1,1 +1,6 @@
 data/
+weights/
+.vscode/
+# Transformers/__pycache__/*
+# C:\Users\ATI-G2\Documents\python\ECG\Transformers\__pycache__
+rough/

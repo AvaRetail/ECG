@@ -84,6 +84,8 @@ def main():
         eval_dataset=data["test"],
         tokenizer=image_processor,
         compute_metrics=compute_metrics,
+        log_level = "info",
+        logging_strategey = "epoch"
     )
 
     trainer.train()

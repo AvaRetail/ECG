@@ -1,3 +1,4 @@
+from typing import Any
 import pandas as pd
 import math
 import torch
@@ -60,3 +61,13 @@ class ECGSequence():
 
     def __del__(self):
         self.f.close()
+
+
+class loadHdf5():
+    def __init__(self, path_to_hdf5):
+        self.f = h5py.File(path_to_hdf5)
+        self.signals = self.f["tracings"]
+        self.ids = self.f["exam_id"]
+
+    def __getitem__(self, idx) :
+        return np.array(self.signals[idx]).squeeze(), np.array(self.ids[idx]).squeeze()

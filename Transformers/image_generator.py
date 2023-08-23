@@ -56,7 +56,7 @@ def main():
 
 
 if __name__=="__main__":
-    dest_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part2_imgs"
-    hdf5_data_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part2.hdf5"
+    dest_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part3_imgs"
+    hdf5_data_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part3.hdf5"
     num_processes = 1
     main()
