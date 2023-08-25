@@ -17,6 +17,7 @@ def prepare_dataset():
 
 def model_definition():
     model = resnet50(ResNet50_Weights)
+    
     return model.train()
 
 def main():

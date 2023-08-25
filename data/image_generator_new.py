@@ -1,3 +1,9 @@
+'''
+Script-1 in the pre-processing pipeline
+
+This script converts the signal from hdf5 to the images and stores them in the folder named same as the hdf5 file
+'''
+
 import numpy as np
 import h5py
 import shutil

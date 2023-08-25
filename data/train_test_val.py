@@ -1,4 +1,6 @@
 '''
+Script-3 in the pre-processing pipeline
+
 This script helps in converting the folder containing images arranged for image classification into train, test and validate.
 '''
 
