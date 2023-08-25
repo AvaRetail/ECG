@@ -46,19 +46,14 @@ def main():
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--dest_path")
-    parser.add_argument("--hdf5_data_path") 
+    parser.add_argument("--dest_path", default=r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part5_imgs")
+    parser.add_argument("--hdf5_data_path", default=r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part5.hdf5") 
 
     return parser.parse_args()
 
 if __name__=="__main__":
 
-    # args = get_args()
-    # dest_path = args.dest_path
-    # hdf5_data_path = args.hdf5_data_path
-
-    dest_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part4_imgs"
-    hdf5_data_path = r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\exams_part4.hdf5"
-    # num_processes = 1
-
+    args = get_args()
+    dest_path = args.dest_path
+    hdf5_data_path = args.hdf5_data_path
     main()

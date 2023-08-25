@@ -74,6 +74,8 @@ def main():
         logging_steps=10,
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
+        # log_level = "info",
+        # logging_strategy  = "epoch"
     )
 
     trainer = Trainer(
@@ -84,8 +86,7 @@ def main():
         eval_dataset=data["test"],
         tokenizer=image_processor,
         compute_metrics=compute_metrics,
-        log_level = "info",
-        logging_strategey = "epoch"
+
     )
 
     trainer.train()

@@ -1,6 +1,14 @@
-data/
+data/code-15
+data/dataRoot
+data/not_normal_ecg
+data/rough
+data/vit-data
 weights/
 .vscode/
+automatic-ecg-diagnosis/data
+automatic-ecg-diagnosis/dnn_predicts
+automatic-ecg-diagnosis/outputs
 # Transformers/__pycache__/*
 # C:\Users\ATI-G2\Documents\python\ECG\Transformers\__pycache__
 rough/
+Transformers/checkpoint
