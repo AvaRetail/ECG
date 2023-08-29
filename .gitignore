@@ -3,6 +3,7 @@ data/dataRoot
 data/not_normal_ecg
 data/rough
 data/vit-data
+data/12-lead
 weights/
 .vscode/
 automatic-ecg-diagnosis/data
