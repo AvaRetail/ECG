@@ -11,3 +11,4 @@ automatic-ecg-diagnosis/dnn_predicts
 automatic-ecg-diagnosis/outputs
 rough/
 Transformers/checkpoint
+*.hdf5

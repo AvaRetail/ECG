@@ -112,10 +112,10 @@ class ResidualUnit(object):
         return [x, y]
 
 
-def get_model(n_classes, last_layer='sigmoid'):
+def get_model(n_classes, input_shape: tuple, last_layer='sigmoid'):
     kernel_size = 16
     kernel_initializer = 'he_normal'
-    signal = Input(shape=(4096, 12), dtype=np.float32, name='signal')
+    signal = Input(shape=input_shape, dtype=np.float32, name='signal')
     x = signal
     x = Conv1D(64, kernel_size, padding='same', use_bias=False,
                kernel_initializer=kernel_initializer)(x)
@@ -133,7 +133,6 @@ def get_model(n_classes, last_layer='sigmoid'):
     diagn = Dense(n_classes, activation=last_layer, kernel_initializer=kernel_initializer)(x)
     model = Model(signal, diagn)
     return model
-
 
 if __name__ == "__main__":
     model = get_model(6)

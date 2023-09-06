@@ -7,18 +7,31 @@ from argparse import ArgumentParser
 import pandas as pd
 import re
 import csv
+import sys
 
-def convert():
+sys.path.append(r'C:\Users\ATI-G2\Documents\python\ECG')
+from utils import wrappers
+
+@wrappers.calculate_execution_time
+def convert(limit: int):
     root_dir = args.ds
     glob_path = root_dir + r"\\*\\*\\RECORDS" 
 
-    temp_arr = np.zeros((45000,3000,12))
+    temp_arr = np.zeros((limit,3000,12),dtype=np.float16)
     k=0
-    # with open("records.txt","w") as f:
+
     for i, pth in enumerate(glob.glob(glob_path)):
+
         with open(f"{pth}", "r") as g:
             records = g.readlines()
             for record in records:
+
+                if k== limit:
+                    with h5py.File(f'12-lead.hdf5',"w") as f:
+                        f.create_dataset("tracings",data=temp_arr)
+
+                    return
+
                 try:
                     temp = pth
                     fil = record.replace("\n",'')
@@ -30,24 +43,14 @@ def convert():
                     # print(temp_arr[0])
 
                 except Exception as e:
-                    print(f'Exception cause in the record, {temp}, {record}, {k}')
-                    print(e)
-                    
+                        print(f'Exception cause in the record, {temp}, {record}, {k}')
+                        print(e)
+
                 print(k)
                 k += 1
                 pth = temp
-            
-                
 
             
-
-    with h5py.File(f'12-lead.hdf5',"w") as f:
-        f.create_dataset("tracings",data=temp_arr)
-
-
-    with open("records.txt", "r") as f:
-        file = f.readline
-
 def convert_labels():
     root_dir = args.ds
     glob_path = root_dir + r"\\*\\*\\RECORDS" 
@@ -115,14 +118,13 @@ def convert_labels():
     print("done with the creating labels hdf5")
 
 
-
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--ds", default=r"C:\Users\ATI-G2\Documents\python\ECG\data\code-15\12-lead\WFDBRecords")
+    parser.add_argument("--ds", default=r"C:\Users\ATI-G2\Documents\python\ECG\data\12-lead\WFDBRecords")
     return parser.parse_args()
     
 
 if __name__ == "__main__":
     args = get_args()
-    convert()
+    convert(45000)
     # convert_labels()

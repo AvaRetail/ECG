@@ -12,7 +12,7 @@ if __name__ == "__main__":
                         help='path to hdf5 file containing tracings')
     parser.add_argument('path_to_csv', type=str,
                         help='path to csv file containing annotations')
-    parser.add_argument('--val_split', type=float, default=0.02,
+    parser.add_argument('--val_split', type=float, default=0.3,
                         help='number between 0 and 1 determining how much of'
                              ' the data is to be used for validation. The remaining '
                              'is used for validation. Default: 0.02')
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     # If you are continuing an interrupted section, uncomment line bellow:
     #   model = keras.models.load_model(PATH_TO_PREV_MODEL, compile=False)
-    model = get_model(train_seq.n_classes)
+    model = get_model(train_seq.n_classes,(3000,12))
     model.compile(loss=loss, optimizer=opt)
     # Create log
     callbacks += [TensorBoard(log_dir='./logs', write_graph=False),
@@ -46,10 +46,12 @@ if __name__ == "__main__":
                   ModelCheckpoint('./backup_model_best.hdf5', save_best_only=True)]
     # Train neural network
     history = model.fit(train_seq,
-                        epochs=70,
+                        epochs=2,
                         initial_epoch=0,  # If you are continuing a interrupted section change here
                         callbacks=callbacks,
                         validation_data=valid_seq,
                         verbose=1)
     # Save final result
     model.save("./final_model.hdf5")
+
+    # train_seq[0:2]

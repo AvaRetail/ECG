@@ -14,8 +14,9 @@ from argparse import ArgumentParser
 
 
 def generate_image(data, label):
+    plt.figure(figsize=(20, 15))  # Adjust the width and height as needed
+
     for i, signal in enumerate(data.T):
-        
 
         plt.subplot(12,1,i+1)
         plt.plot(np.arange(0,2000), signal[648:2648])
@@ -31,7 +32,9 @@ def generate_image(data, label):
         plt.gca().xaxis.set_major_formatter(plt.NullFormatter())
         plt.gca().yaxis.set_major_formatter(plt.NullFormatter())
 
-    plt.savefig(os.path.join(dest_path, f'{label}.jpg'), bbox_inches="tight")
+    # plt.savefig(os.path.join(dest_path, f'{label}.jpg'), bbox_inches="tight")
+    plt.savefig(f'{label}.jpg', bbox_inches="tight")
+    plt.show()
     plt.clf()
     print("done saving the id",label)
 
@@ -49,6 +52,7 @@ def main():
     for i in range(size):
         data, label = data_model[i]
         generate_image(data, label)
+        break
 
 def get_args():
     parser = ArgumentParser()
