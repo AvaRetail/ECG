@@ -12,3 +12,4 @@ automatic-ecg-diagnosis/outputs
 rough/
 Transformers/checkpoint
 *.hdf5
+*.csv

@@ -126,7 +126,7 @@ class ResNet1d(nn.Module):
         n_filters_last, n_samples_last = blocks_dim[-1]
         last_layer_dim = n_filters_last * n_samples_last
         self.lin = nn.Linear(last_layer_dim, n_classes)
-        self.act = nn.functional.sigmoid()
+        self.act = nn.functional.sigmoid
         self.n_blk = len(blocks_dim)
 
     def forward(self, x):

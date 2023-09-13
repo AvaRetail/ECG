@@ -1,6 +1,7 @@
 from tensorflow.keras.layers import (
     Input, Conv1D, MaxPooling1D, Dropout, BatchNormalization, Activation, Add, Flatten, Dense)
 from tensorflow.keras.models import Model
+from tensorflow import keras
 import numpy as np
 
 
@@ -112,7 +113,7 @@ class ResidualUnit(object):
         return [x, y]
 
 
-def get_model(n_classes, input_shape: tuple, last_layer='sigmoid'):
+def get_model(n_classes, input_shape: tuple, last_layer='sigmoid') -> keras.models.Model:
     kernel_size = 16
     kernel_initializer = 'he_normal'
     signal = Input(shape=input_shape, dtype=np.float32, name='signal')

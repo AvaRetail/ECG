@@ -1,6 +1,7 @@
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import (ModelCheckpoint, TensorBoard, ReduceLROnPlateau,
                                         CSVLogger, EarlyStopping)
+from tensorflow import keras
 from model import get_model
 import argparse
 from datasets import ECGSequence
@@ -21,9 +22,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # Optimization settings
     loss = 'binary_crossentropy'
-    lr = 0.001
+    lr = 0.00001
     batch_size = 64
-    opt = Adam(lr)
+    opt = keras.optimizers.Adam(lr)
     callbacks = [ReduceLROnPlateau(monitor='val_loss',
                                    factor=0.1,
                                    patience=7,
@@ -37,6 +38,7 @@ if __name__ == "__main__":
     # If you are continuing an interrupted section, uncomment line bellow:
     #   model = keras.models.load_model(PATH_TO_PREV_MODEL, compile=False)
     model = get_model(train_seq.n_classes,(3000,12))
+    # model.load_weights()
     model.compile(loss=loss, optimizer=opt)
     # Create log
     callbacks += [TensorBoard(log_dir='./logs', write_graph=False),
