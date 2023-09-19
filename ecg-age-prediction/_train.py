@@ -6,14 +6,23 @@ import torch
 from resnet import ResNet1d
 import logging
 import time
+from torcheval.metrics import MulticlassF1Score
+
+from pathlib import Path
 
 sys.path.append(r"C:\Users\ATI-G2\Documents\python\ECG")
+from utils.pytorch_utils import SaveBestModel, save_model
+from utils.training_utils import increment_path
+
+# Finding the log file to save
+save_dir = increment_path(Path("weights\lovakant\exp") , mkdir=True)  # increment run
+
 
 #LOGGING 
 
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s ")
 
-file_handler = logging.FileHandler(f"logs.txt",mode="w")
+file_handler = logging.FileHandler(f"{save_dir}/logs.txt",mode="w")
 file_logger = logging.getLogger("file")
 file_logger.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
@@ -28,6 +37,8 @@ console_logger.addHandler(console_handler)
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s ", 
 #                     handlers=[file_handler, screen_handler] 
 #                     )
+console_logger.info(f"saving weights and logs to the folder: {save_dir}")
+file_logger.info(f"saving weights and logs to the folder: {save_dir}")
 
 def get_args():
     parser = ArgumentParser(add_help=True,
@@ -96,7 +107,7 @@ def setup(args):
 
     model = model.apply(model_init)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)     
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)     
 
     loss = torch.nn.BCEWithLogitsLoss()
 
@@ -109,59 +120,98 @@ def main():
 
     device, criterion, optim, model = setup(args)
 
-    n_epochs = 2
+    n_epochs = 10
     k=0
 
-    train_loss = []
-    val_loss = []
+    save_best_model = SaveBestModel()
 
     for i in range(n_epochs):
-        # for signals, labels in train_seq:
-        for signals, labels in tqdm(train_seq, f'epoch-{i+1}/{n_epochs}'):
-            try:
-                signals, labels = signals.to(device), labels.to(device)
 
-                # Check if there are any non-finite values in the output
-                if not torch.isfinite(signals).all():
-                    signals = torch.nan_to_num(signals)
-                    
-                optim.zero_grad()
-                probs = model(signals)
-                loss = criterion(probs, labels)
-                loss.backward()
-                optim.step()
-                train_loss.append(loss.item())
-                console_handler.info(loss.item())
-                console_handler.debug(f"{k}")
-                k = k+ 1
+        train_loss = []
+        val_loss = []
+        # train_acc = 0
+        # val_acc = 0
+        k = 0
+        train_f1 = MulticlassF1Score(num_classes=63).to(device=device)
+        val_f1 = MulticlassF1Score(num_classes=63).to(device=device)
 
-            except Exception as e:
-                file_handler.error(e)
-                # console_handler.error(e)
-
-        file_handler.info(f"training loss for the epoch-{i+1}/{n_epochs}: {sum(train_loss)/len(train_loss)}")
-        train_loss.clear()
-        k=0
-    
-        with torch.no_grad():
-
-            for signals, labels in tqdm(val_seq, "validating"):
+        with tqdm(train_seq, unit="batch") as train_bar:
+            # for signals, labels in train_seq:
+            for signals, labels in train_bar:
                 try:
                     signals, labels = signals.to(device), labels.to(device)
+
                     # Check if there are any non-finite values in the output
                     if not torch.isfinite(signals).all():
                         signals = torch.nan_to_num(signals)
+                        
+                    optim.zero_grad()
                     probs = model(signals)
                     loss = criterion(probs, labels)
-                    console_handler.info(loss.item())
-                    val_loss.append(loss.item())
+                    loss.backward()
+                    optim.step()
+
+                    # loss, acc calculation
+                    # _, pred_idx = torch.max(probs.data, 1)
+                    _, true_idx = torch.max(labels.data, 1)
+                    # train_running_correct += (pred_idx==true_idx).sum().item()
+                    train_loss.append(loss.item())
+
+                    train_f1.update(probs, true_idx)
+                    train_score = train_f1.compute()
+
+                    k = k+ 1
+
+                    train_bar.set_postfix(iteration= f"{k+1}/{len(train_seq)}", loss = loss.item(), f1_score = train_score.item())
 
                 except Exception as e:
-                    file_handler.error(e)
+                    file_logger.error(e)
+                    # console_handler.error(e)
 
-            file_handler.info(f"val loss for the epoch-{i+1}/{n_epochs}: {sum(val_loss)/len(val_loss)}")
-            val_loss.clear()
- 
+            train_epoch_loss = sum(train_loss)/len(train_loss)
+            file_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {train_score}")
+            file_logger.info(f"training loss for the epoch-{i+1}/{n_epochs}: {train_epoch_loss}")
+
+            console_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {train_score}")
+            console_logger.info(f"training loss for the epoch-{i+1}/{n_epochs}: {train_epoch_loss}")
+    
+        with tqdm(val_seq) as val_bar:
+            with torch.no_grad():
+
+                for signals, labels in val_bar:
+                    try:
+                        signals, labels = signals.to(device), labels.to(device)
+
+                        # Checking if there are any non-finite values in the output
+                        if not torch.isfinite(signals).all():
+                            signals = torch.nan_to_num(signals)
+                        probs = model(signals)
+                        loss = criterion(probs, labels)
+
+                        # loss and metric calculation
+                        _, true_idx = torch.max(labels, 1)
+                        val_loss.append(loss.item())
+                        val_f1.update(probs, true_idx)
+                        val_score = val_f1.compute()
+
+                        #scripting into files and std outuput
+                        val_bar.set_postfix(val_loss=loss.item(), val_f1 = val_score.item())
+
+                    except Exception as e:
+                        file_logger.error(e)
+
+            val_epoch_loss = sum(val_loss)/len(val_loss)
+            file_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {val_score}")
+            file_logger.info(f"val loss for the epoch-{i+1}/{n_epochs}: {val_epoch_loss}")
+    
+            console_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {val_score}")
+            console_logger.info(f"val loss for the epoch-{i+1}/{n_epochs}: {val_epoch_loss}")
+
+            save_best_model(val_epoch_loss, i, model, optim, criterion, save_dir)
+    
+    save_model(n_epochs, model, optim, criterion, save_dir)
+
+
 if __name__=="__main__":
     args = get_args()
     main()
