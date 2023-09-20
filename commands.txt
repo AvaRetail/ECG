@@ -1,0 +1,25 @@
+envs
+----
+ecg_tf (conda)
+trans (venv): lovakant project (C:\users\ati-g2\envs\trans\scripts\activate)
+
+
+commands for pytorch installation
+---------------------------------
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+
+
+remember
+--------
+C:\Users\ATI-G2\.cache\huggingface
+C:\Users\ATI-G2\AppData\Local\pip\cache
+
+
+terminal commands
+-----------------
+python models\automatic-ecg-diagnosis-pyTorch\_train.py \
+C:\Users\ATI-G2\Documents\python\ECG\data\lovakant\12-lead.hdf5 \
+C:\Users\ATI-G2\Documents\python\ECG\data\12-lead\12-lead_labels.csv
+
+
+

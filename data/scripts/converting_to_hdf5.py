@@ -98,7 +98,7 @@ def convert_labels(limit):
                 temp = pth
                 pth = pth.replace("RECORDS",str(fil))
                 try: 
-                    _, fields =  wfdb.rdsamp(pth, sampto=3000)
+                    _, fields =  wfdb.rdsamp(pth, sampto=4096)
                     string = fields["comments"][2]
                     # print("string--", string)
                     matches = re.findall(pattern, string)

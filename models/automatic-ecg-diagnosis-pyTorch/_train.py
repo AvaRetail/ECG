@@ -6,7 +6,8 @@ import torch
 from resnet import ResNet1d
 import logging
 import time
-from torcheval.metrics import MulticlassF1Score
+from torcheval.metrics import MulticlassF1Score, MultilabelPrecisionRecallCurve, MultilabelAUPRC
+import pandas as pd
 
 from pathlib import Path
 
@@ -43,40 +44,15 @@ file_logger.info(f"saving weights and logs to the folder: {save_dir}")
 def get_args():
     parser = ArgumentParser(add_help=True,
                                      description='Train model to predict rage from the raw ecg tracing.')
-    parser.add_argument('--epochs', type=int, default=70,
+    parser.add_argument('--epochs', type=int, default=30,
                         help='maximum number of epochs (default: 70)')
-    parser.add_argument('--seed', type=int, default=2,
-                        help='random seed for number generator (default: 2)')
-    parser.add_argument('--sample_freq', type=int, default=400,
-                        help='sample frequency (in Hz) in which all traces will be resampled at (default: 400)')
-    parser.add_argument('--seq_length', type=int, default=3000,
-                        help='size (in # of samples) for all traces. If needed traces will be zeropadded'
-                                    'to fit into the given size. (default: 4096)')
-    parser.add_argument('--scale_multiplier', type=int, default=10,
-                        help='multiplicative factor used to rescale inputs.')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='batch size (default: 32).')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate (default: 0.001)')
-    parser.add_argument("--patience", type=int, default=7,
-                        help='maximum number of epochs without reducing the learning rate (default: 7)')
-    parser.add_argument("--min_lr", type=float, default=1e-7,
-                        help='minimum learning rate (default: 1e-7)')
-    parser.add_argument("--lr_factor", type=float, default=0.1,
-                        help='reducing factor for the lr in a plateu (default: 0.1)')
-    parser.add_argument('--net_filter_size', type=int, nargs='+', default=[64, 128, 196, 256, 320],
-                        help='filter size in resnet layers (default: [64, 128, 196, 256, 320]).')
-    parser.add_argument('--net_seq_lengh', type=int, nargs='+', default=[3000, 1000, 250, 50, 10],
-                        help='number of samples per resnet layer (default: [4096, 1024, 256, 64, 16]).')
-    parser.add_argument('--dropout_rate', type=float, default=0.8,
-                        help='dropout rate (default: 0.8).')
-    parser.add_argument('--kernel_size', type=int, default=17,
-                        help='kernel size in convolutional layers (default: 17).')
-    parser.add_argument('--folder', default='model/',
-                        help='output folder (default: ./out)')
     parser.add_argument('--dataset_name', default='tracings',
                         help='traces dataset in the hdf5 file.')
-    parser.add_argument('--val_split', type=float, default=0.02)
+    parser.add_argument('--val_split', type=float, default=0.3)
     parser.add_argument('path_to_hdf5',
                         help='path to file containing ECG traces',
                         default=r"12-lead.hdf5")
@@ -87,15 +63,33 @@ def get_args():
 
     return args
 
-def setup(args):
+def calc_f1_score(input):
+    P, R, T = input[0], input[1], input[2]
+    f1_score = []
+    f1 = 0
+
+    for p,r,t in zip(P,R,T): # this loops as many number of labels or classes
+        Len = len(p)
+        for i in range(Len):
+            pi, ri = p[i].item(), r[i].item()
+            f1+= 2*pi*ri/(pi+ri)
+        f1_score.append(f1/Len)
+    return f1_score.sum()/len(f1_score)
+
+def setup():
     device = torch.device("cuda")
     N_LEADS = 12
     N_CLASSES = 63
-    model = ResNet1d(input_dim=(N_LEADS, args.seq_length),
-                     blocks_dim=list(zip(args.net_filter_size, args.net_seq_lengh)),
+    seq_length = 3000
+    net_filter_size = [64, 128, 196, 256, 320]
+    net_seq_length = [3000, 1000, 250, 50, 10]
+    kernel_size = 17
+    dropout_rate = 0.8
+    model = ResNet1d(input_dim=(N_LEADS, seq_length),
+                     blocks_dim=list(zip(net_filter_size, net_seq_length)),
                      n_classes=N_CLASSES,
-                     kernel_size=args.kernel_size,
-                     dropout_rate=args.dropout_rate)
+                     kernel_size=kernel_size,
+                     dropout_rate=dropout_rate)
     
     def model_init(m):
         if isinstance(m, torch.nn.Conv1d):
@@ -109,7 +103,7 @@ def setup(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)     
 
-    loss = torch.nn.BCEWithLogitsLoss()
+    loss = torch.nn.BCELoss()
 
     return device, loss, optimizer, model.to(device=device)
 
@@ -118,25 +112,27 @@ def main():
     train_seq, val_seq = ECGSequence.get_train_and_val(
     args.path_to_hdf5, args.dataset_name, args.path_to_csv, batch_size, args.val_split)
 
-    device, criterion, optim, model = setup(args)
+    device, criterion, optim, model = setup()
 
-    n_epochs = 10
+    n_epochs = args.epochs
     k=0
 
     save_best_model = SaveBestModel()
 
+    train_loss = []
+    val_loss = []
+    train_score = []
+    val_score = []
+
     for i in range(n_epochs):
 
-        train_loss = []
-        val_loss = []
-        # train_acc = 0
-        # val_acc = 0
         k = 0
-        train_f1 = MulticlassF1Score(num_classes=63).to(device=device)
-        val_f1 = MulticlassF1Score(num_classes=63).to(device=device)
+        F1 = 0
+
+        train_f1 = MultilabelAUPRC(num_labels=63).to(device=device)
+        val_f1 = MultilabelAUPRC(num_labels=63).to(device=device)
 
         with tqdm(train_seq, unit="batch") as train_bar:
-            # for signals, labels in train_seq:
             for signals, labels in train_bar:
                 try:
                     signals, labels = signals.to(device), labels.to(device)
@@ -152,30 +148,29 @@ def main():
                     optim.step()
 
                     # loss, acc calculation
-                    # _, pred_idx = torch.max(probs.data, 1)
-                    _, true_idx = torch.max(labels.data, 1)
-                    # train_running_correct += (pred_idx==true_idx).sum().item()
-                    train_loss.append(loss.item())
 
-                    train_f1.update(probs, true_idx)
-                    train_score = train_f1.compute()
+                    # _, pred_idx = torch.max(probs.data, 1)
+                    # _, true_idx = torch.max(labels.data, 1)
+                    # train_running_correct += (pred_idx==true_idx).sum().item()
+
+                    train_loss.append(round(loss.item(),5))
+
+                    train_f1.update(probs, labels)
+                    metric = train_f1.compute()
 
                     k = k+ 1
-
-                    train_bar.set_postfix(iteration= f"{k+1}/{len(train_seq)}", loss = loss.item(), f1_score = train_score.item())
+                    train_bar.set_postfix(iteration= f"{k+1}/{len(train_seq)}", loss = loss.item(), metric = metric.item())
 
                 except Exception as e:
                     file_logger.error(e)
-                    # console_handler.error(e)
 
-            train_epoch_loss = sum(train_loss)/len(train_loss)
-            file_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {train_score}")
-            file_logger.info(f"training loss for the epoch-{i+1}/{n_epochs}: {train_epoch_loss}")
+            train_epoch_loss = sum(train_loss)/len(train_loss) # calculating whole loss for the current epoch
+            train_score.append(round(metric.item(),4)) # appending the metric from the current epoch to save into logs
 
-            console_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {train_score}")
+            console_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {round(metric.item(),4)}")
             console_logger.info(f"training loss for the epoch-{i+1}/{n_epochs}: {train_epoch_loss}")
     
-        with tqdm(val_seq) as val_bar:
+        with tqdm(val_seq, unit="batch") as val_bar:
             with torch.no_grad():
 
                 for signals, labels in val_bar:
@@ -189,27 +184,35 @@ def main():
                         loss = criterion(probs, labels)
 
                         # loss and metric calculation
-                        _, true_idx = torch.max(labels, 1)
-                        val_loss.append(loss.item())
-                        val_f1.update(probs, true_idx)
-                        val_score = val_f1.compute()
+                        # _, true_idx = torch.max(labels, 1)
+                        val_loss.append(round(loss.item(),5))
 
-                        #scripting into files and std outuput
-                        val_bar.set_postfix(val_loss=loss.item(), val_f1 = val_score.item())
+                        val_f1.update(probs, labels)
+                        metric = val_f1.compute()
+
+                        val_bar.set_postfix(val_loss=loss.item(), metric = metric.item())
 
                     except Exception as e:
                         file_logger.error(e)
 
             val_epoch_loss = sum(val_loss)/len(val_loss)
-            file_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {val_score}")
-            file_logger.info(f"val loss for the epoch-{i+1}/{n_epochs}: {val_epoch_loss}")
+            val_score.append(round(metric.item(),4))
     
-            console_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {val_score}")
+            console_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {round(metric.item(),4)}")
             console_logger.info(f"val loss for the epoch-{i+1}/{n_epochs}: {val_epoch_loss}")
 
             save_best_model(val_epoch_loss, i, model, optim, criterion, save_dir)
     
     save_model(n_epochs, model, optim, criterion, save_dir)
+
+    df_data = {"epoch": range(args.epochs),
+               "train_loss": train_loss,
+               "val_loss": val_loss,
+               "train_metric": train_score,
+               "val_metric": val_score}
+    
+    pd.DataFrame(df_data).to_csv(f"{save_dir}\logs.csv",index = False) #saving logs
+
 
 
 if __name__=="__main__":

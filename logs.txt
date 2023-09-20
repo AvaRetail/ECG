@@ -1,8 +1,0 @@
-2023-09-18 14:25:59,765 - INFO - file - training f1 score for the epoch-1/2: 0.249777689576149 
-2023-09-18 14:25:59,765 - INFO - file - training loss for the epoch-1/2: 722.229658305645/984 
-2023-09-18 14:26:07,437 - INFO - file - val f1 score for the epoch-1/2: 0.16434085369110107 
-2023-09-18 14:26:07,437 - INFO - file - val loss for the epoch-1/2: 0.6942729356736299 
-2023-09-18 14:26:57,764 - INFO - file - training f1 score for the epoch-2/2: 0.29080918431282043 
-2023-09-18 14:26:57,764 - INFO - file - training loss for the epoch-2/2: 682.5509505867958/984 
-2023-09-18 14:27:05,530 - INFO - file - val f1 score for the epoch-2/2: 0.16434085369110107 
-2023-09-18 14:27:05,530 - INFO - file - val loss for the epoch-2/2: 0.6933963666902302 
