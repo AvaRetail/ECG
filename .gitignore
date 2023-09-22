@@ -5,11 +5,13 @@ data/vit-data
 weights/
 .vscode/
 
-models\automatic-ecg-diagnosis-tf\dnn_predicts
-models\automatic-ecg-diagnosis-tf\outputs
-models\automatic-ecg-diagnosis-tf\data
+models/automatic-ecg-diagnosis-tf/dnn_predicts
+models/automatic-ecg-diagnosis-tf/outputs
+models/automatic-ecg-diagnosis-tf/data
+models/automatic-ecg-diagnosis-pyTorch/pretrained-weights
 
-*\models\__pycache__
+models/*/__pycache__
+*/__pycache__
 
 
 

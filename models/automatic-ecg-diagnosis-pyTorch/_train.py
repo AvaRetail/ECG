@@ -1,26 +1,27 @@
-from tqdm import tqdm
-from argparse import ArgumentParser
-from dataset import ECGSequence
 import sys
 import torch
-from resnet import ResNet1d
 import logging
-import time
-from torcheval.metrics import MulticlassF1Score, MultilabelPrecisionRecallCurve, MultilabelAUPRC
 import pandas as pd
-
+from tqdm import tqdm
+from argparse import ArgumentParser
+from torcheval.metrics import MultilabelAUPRC
 from pathlib import Path
+from torch import nn
 
-sys.path.append(r"C:\Users\ATI-G2\Documents\python\ECG")
+# importing functions from withing dir
+from dataset import ECGSequence
+from resnet import ResNet1d
+
+#importing functions from utils
+sys.path.append(r"E:\Chetan\ECG")
 from utils.pytorch_utils import SaveBestModel, save_model
-from utils.training_utils import increment_path
+from utils.utils import increment_path
 
 # Finding the log file to save
 save_dir = increment_path(Path("weights\lovakant\exp") , mkdir=True)  # increment run
 
 
 #LOGGING 
-
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s ")
 
 file_handler = logging.FileHandler(f"{save_dir}/logs.txt",mode="w")
@@ -38,6 +39,7 @@ console_logger.addHandler(console_handler)
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s ", 
 #                     handlers=[file_handler, screen_handler] 
 #                     )
+
 console_logger.info(f"saving weights and logs to the folder: {save_dir}")
 file_logger.info(f"saving weights and logs to the folder: {save_dir}")
 
@@ -52,13 +54,13 @@ def get_args():
                         help='learning rate (default: 0.001)')
     parser.add_argument('--dataset_name', default='tracings',
                         help='traces dataset in the hdf5 file.')
-    parser.add_argument('--val_split', type=float, default=0.3)
-    parser.add_argument('path_to_hdf5',
+    parser.add_argument('--val_split', type=float, default=0.1)
+    parser.add_argument('--path_to_hdf5',
                         help='path to file containing ECG traces',
-                        default=r"12-lead.hdf5")
-    parser.add_argument('path_to_csv',
+                        default=r"E:\Chetan\ECG\data\lovakant\exp3\12-lead.hdf5")
+    parser.add_argument('--path_to_csv',
                         help='path to csv file containing attributes.',
-                        default=r"12-lead_labels.csv")
+                        default=r"E:\Chetan\ECG\data\lovakant\exp3\12-lead_labels.csv")
     args = parser.parse_args()
 
     return args
@@ -79,10 +81,10 @@ def calc_f1_score(input):
 def setup():
     device = torch.device("cuda")
     N_LEADS = 12
-    N_CLASSES = 63
-    seq_length = 3000
+    N_CLASSES = 1 # will be converted to 63
+    seq_length = 4096
     net_filter_size = [64, 128, 196, 256, 320]
-    net_seq_length = [3000, 1000, 250, 50, 10]
+    net_seq_length = [4096, 1024, 256, 64, 16]
     kernel_size = 17
     dropout_rate = 0.8
     model = ResNet1d(input_dim=(N_LEADS, seq_length),
@@ -91,19 +93,23 @@ def setup():
                      kernel_size=kernel_size,
                      dropout_rate=dropout_rate)
     
-    def model_init(m):
-        if isinstance(m, torch.nn.Conv1d):
-            torch.nn.init.normal_(m.weight, 0.0, 0.02)
 
-        if isinstance(m, torch.nn.BatchNorm1d):
-            torch.nn.init.normal_(m.weight, 0.0,0.02)
-            torch.nn.init.constant_(m.bias, 0.0)   
+    # def model_init(m):
+    #     if isinstance(m, torch.nn.Conv1d):
+    #         torch.nn.init.normal_(m.weight, 0.0, 0.02)
 
-    model = model.apply(model_init)
+    #     if isinstance(m, torch.nn.BatchNorm1d):
+    #         torch.nn.init.normal_(m.weight, 0.0,0.02)
+    #         torch.nn.init.constant_(m.bias, 0.0)   
+
+    # model = model.apply(model_init)
+
+    model.load_state_dict(torch.load(r"models\automatic-ecg-diagnosis-pyTorch\pretrained-weights\model.pth")["model"])
+    lst = model.lin.in_features
+    model.lin = nn.Linear(lst, 63)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)     
-
-    loss = torch.nn.BCELoss()
+    loss = torch.nn.BCEWithLogitsLoss()
 
     return device, loss, optimizer, model.to(device=device)
 
@@ -119,6 +125,8 @@ def main():
 
     save_best_model = SaveBestModel()
 
+    train_loss_current = []
+    val_loss_current = []
     train_loss = []
     val_loss = []
     train_score = []
@@ -153,7 +161,7 @@ def main():
                     # _, true_idx = torch.max(labels.data, 1)
                     # train_running_correct += (pred_idx==true_idx).sum().item()
 
-                    train_loss.append(round(loss.item(),5))
+                    train_loss_current.append(round(loss.item(),5))
 
                     train_f1.update(probs, labels)
                     metric = train_f1.compute()
@@ -164,7 +172,8 @@ def main():
                 except Exception as e:
                     file_logger.error(e)
 
-            train_epoch_loss = sum(train_loss)/len(train_loss) # calculating whole loss for the current epoch
+            train_epoch_loss = sum(train_loss_current)/len(train_loss_current) # calculating whole loss for the current epoch
+            train_loss.append(train_epoch_loss)
             train_score.append(round(metric.item(),4)) # appending the metric from the current epoch to save into logs
 
             console_logger.info(f"training f1 score for the epoch-{i+1}/{n_epochs}: {round(metric.item(),4)}")
@@ -185,17 +194,19 @@ def main():
 
                         # loss and metric calculation
                         # _, true_idx = torch.max(labels, 1)
-                        val_loss.append(round(loss.item(),5))
+                        val_loss_current.append(round(loss.item(),5))
 
                         val_f1.update(probs, labels)
                         metric = val_f1.compute()
 
-                        val_bar.set_postfix(val_loss=loss.item(), metric = metric.item())
+                        val_bar.set_postfix(val_loss_current=loss.item(), metric = metric.item())
 
                     except Exception as e:
                         file_logger.error(e)
 
-            val_epoch_loss = sum(val_loss)/len(val_loss)
+
+            val_epoch_loss = sum(val_loss_current)/len(val_loss_current)
+            val_loss.append(val_epoch_loss)
             val_score.append(round(metric.item(),4))
     
             console_logger.info(f"val f1 score for the epoch-{i+1}/{n_epochs}: {round(metric.item(),4)}")

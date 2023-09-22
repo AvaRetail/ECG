@@ -1,19 +1,36 @@
+'''
+This file helps in converting the physioNet data format to hdf5 format;
+
+Why am I doing this?
+Ans) Because the model I want to run accepts the training data in hdf5 format.
+
+parameters:
+The data should be fo the shpae (n_samples, 4096, 12)
+'''
+
 import h5py
 import wfdb
 import numpy as np
 import glob
-import os
 from argparse import ArgumentParser
 import pandas as pd
 import re
 import csv
 import sys
 import logging
+from pathlib import Path
 
-sys.path.append(r'C:\Users\ATI-G2\Documents\python\ECG')
+# importing functions from utils
+sys.path.append(r'E:\Chetan\ECG')
 from utils import wrappers
+from utils.utils import increment_path
 
-file_handler = logging.FileHandler(f"data_create_logs.txt",mode="w")
+# creating folder for logs
+save_dir = increment_path(Path("data\lovakant\exp") , mkdir=True)  # increment run
+
+
+# logging
+file_handler = logging.FileHandler(f"{save_dir}\data_create_logs.txt",mode="w")
 screen_handler = logging.StreamHandler(sys.stdout)
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s ", 
@@ -21,12 +38,14 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %
                     )
 
 
+
+
 @wrappers.calculate_execution_time
-def convert(limit: int):
+def convert_to_npy(limit: int):
     root_dir = args.ds
     glob_path = root_dir + r"\\*\\*\\RECORDS" 
 
-    temp_arr = np.zeros((limit,3000,12),dtype=np.float16)
+    temp_arr = np.zeros((limit,4096,12),dtype=np.float16)
     k=0
 
     for i, pth in enumerate(glob.glob(glob_path)):
@@ -36,8 +55,9 @@ def convert(limit: int):
             for record in records:
 
                 if k== limit:
-                    with h5py.File(f'{args.dest_hdf5}',"w") as f:
-                        f.create_dataset("tracings",data=temp_arr)
+                    # with h5py.File(f'{args.dest_hdf5}',"w") as f:
+                    #     f.create_dataset("tracings",data=temp_arr)
+                    np.save(f"{save_dir}/12-lead.npy", temp_arr)
 
                     return
 
@@ -46,7 +66,7 @@ def convert(limit: int):
                     fil = record.replace("\n",'')
                     # print("hello",fil)
                     pth = pth.replace("RECORDS",str(fil))
-                    signals, _ =  wfdb.rdsamp(pth, sampto=3000)
+                    signals, _ =  wfdb.rdsamp(pth, sampto=4096)
                     # print(signals.shape)
                     temp_arr[k,:,:] = signals
                     # print(temp_arr[0])
@@ -62,7 +82,7 @@ def convert(limit: int):
                 pth = temp
 
 @wrappers.calculate_execution_time
-def convert_labels(limit):
+def convert_labels_to_npy(limit):
     root_dir = args.ds
     glob_path = root_dir + r"\\*\\*\\RECORDS" 
 
@@ -88,9 +108,10 @@ def convert_labels(limit):
             for record in records:
 
                 if k== limit:
-                    with open(f"{args.dest_labels}","w",newline="\n") as f:
-                        writer = csv.writer(f)
-                        writer.writerows(temp_arr)
+                    # with open(f"{args.dest_labels}","w",newline="\n") as f:
+                    #     writer = csv.writer(f)
+                    #     writer.writerows(temp_arr)
+                    np.save(f"{save_dir}/12-lead-labels.npy", temp_arr)
 
                     return
 
@@ -138,18 +159,16 @@ def convert_labels(limit):
 
     logging.info("done with the creating labels hdf5")
 
-
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--ds", default=r"E:\Chetan\ECG\data\12-lead\WFDBRecords")
-    parser.add_argument("--src_labels", default=r"E:\Chetan\ECG\data\12-lead\ConditionNames_SNOMED-CT.csv")
-    parser.add_argument("--dest_hdf5", default=r"12-lead.hdf5")
-    parser.add_argument("--dest_labels", default=r"12-lead_labels.csv")
+    parser.add_argument("--ds", default=r"E:\Chetan\ECG\data\lovakant\WFDBRecords")
+    parser.add_argument("--src_labels", default=r"E:\Chetan\ECG\data\lovakant\ConditionNames_SNOMED-CT.csv")
+    parser.add_argument("--dest_hdf5", default=f"{save_dir}/12-lead.hdf5")
+    parser.add_argument("--dest_labels", default=f"{save_dir}/12-lead_labels.csv")
     return parser.parse_args()
-    
 
 if __name__ == "__main__":
     args = get_args()
     limit = 45000
-    # convert(limit)
-    convert_labels(limit)
+    convert_to_npy(limit)
+    convert_labels_to_npy(limit)

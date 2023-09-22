@@ -144,7 +144,7 @@ class ResNet1d(nn.Module):
         x = x.view(x.size(0), -1)
 
         # Fully conected layer
-        x = self.act(self.lin(x))
+        x = self.lin(x)
 
         return x
 
