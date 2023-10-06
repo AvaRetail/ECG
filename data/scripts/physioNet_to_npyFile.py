@@ -39,7 +39,6 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %
 
 
 
-
 @wrappers.calculate_execution_time
 def convert_to_npy(limit: int):
     root_dir = args.ds
@@ -88,17 +87,20 @@ def convert_labels_to_npy(limit):
 
     csv_pth = args.src_labels
     df = pd.read_csv(csv_pth)
-    label_idx = {}
+    dict_snomed_to_label = {}
+    arr_snomed_label = df[["Snomed_CT", "HighLevelName"]].to_numpy()
+    for i,val in enumerate(arr_snomed_label):
+        dict_snomed_to_label[val[0]] = val[1]
 
-    all_labels = df["Snomed_CT"].values
+    label_idx = {}
+    all_labels = df["HighLevelName"].unique()
     for i, label in enumerate(all_labels):
         label_idx[label] = i
-        # idx_label[i] = label
 
     pattern = r"\d{3,}"
 
     # print("labelsl",len(all_labels))
-    temp_arr = np.zeros((45000,len(all_labels)), dtype=np.int16)
+    temp_arr = np.zeros((limit,len(all_labels)), dtype=np.int16)
     k = 0
     
     for i, pth in enumerate(glob.glob(glob_path)):
@@ -112,7 +114,6 @@ def convert_labels_to_npy(limit):
                     #     writer = csv.writer(f)
                     #     writer.writerows(temp_arr)
                     np.save(f"{save_dir}/12-lead-labels.npy", temp_arr)
-
                     return
 
                 fil = record.replace("\n",'')
@@ -121,26 +122,18 @@ def convert_labels_to_npy(limit):
                 try: 
                     _, fields =  wfdb.rdsamp(pth, sampto=4096)
                     string = fields["comments"][2]
-                    # print("string--", string)
                     matches = re.findall(pattern, string)
-                    # print("These are the matches \n",matches)
-                    one_hot_vector = np.zeros((len(all_labels)),dtype=np.int16)
+                    one_hot_vector = np.zeros((len(all_labels)), dtype=np.int16)
                     for j,match in enumerate(matches):
                         try:
-                            one_hot_vector[label_idx[int(match.rstrip())]] = 1
-                            # print(f"{match}-{i}")
+                            one_hot_vector[label_idx[dict_snomed_to_label[int(match.rstrip())]]] = 1
 
                         except Exception as e:
                             print("exception",e)
                             pass
-                    # print(i)
-                    # print(one_hot_vector)
                     temp_arr[k,:]=one_hot_vector
 
                 except Exception as e:
-                    # print(f'Exception cause in the record, {temp}, {record}, {k}')
-                    # print(e)
-                    # sys.exit(0)
                     logging.error(f'Exception cause in the record, {temp}, {record}, {k}, \n and the error is {e}')
 
 
@@ -169,6 +162,6 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    limit = 45000
+    limit = 45131
     convert_to_npy(limit)
     convert_labels_to_npy(limit)

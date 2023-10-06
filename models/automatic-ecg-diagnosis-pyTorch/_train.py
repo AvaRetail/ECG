@@ -41,29 +41,8 @@ console_logger.addHandler(console_handler)
 #                     )
 
 console_logger.info(f"saving weights and logs to the folder: {save_dir}")
-file_logger.info(f"saving weights and logs to the folder: {save_dir}")
+# file_logger.info(f"saving weights and logs to the folder: {save_dir}")
 
-def get_args():
-    parser = ArgumentParser(add_help=True,
-                                     description='Train model to predict rage from the raw ecg tracing.')
-    parser.add_argument('--epochs', type=int, default=30,
-                        help='maximum number of epochs (default: 70)')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='batch size (default: 32).')
-    parser.add_argument('--lr', type=float, default=0.001,
-                        help='learning rate (default: 0.001)')
-    parser.add_argument('--dataset_name', default='tracings',
-                        help='traces dataset in the hdf5 file.')
-    parser.add_argument('--val_split', type=float, default=0.1)
-    parser.add_argument('--path_to_hdf5',
-                        help='path to file containing ECG traces',
-                        default=r"E:\Chetan\ECG\data\lovakant\exp3\12-lead.hdf5")
-    parser.add_argument('--path_to_csv',
-                        help='path to csv file containing attributes.',
-                        default=r"E:\Chetan\ECG\data\lovakant\exp3\12-lead_labels.csv")
-    args = parser.parse_args()
-
-    return args
 
 def calc_f1_score(input):
     P, R, T = input[0], input[1], input[2]
@@ -81,7 +60,7 @@ def calc_f1_score(input):
 def setup():
     device = torch.device("cuda")
     N_LEADS = 12
-    N_CLASSES = 1 # will be converted to 63
+    N_CLASSES = 1 # will be converted to 7
     seq_length = 4096
     net_filter_size = [64, 128, 196, 256, 320]
     net_seq_length = [4096, 1024, 256, 64, 16]
@@ -93,7 +72,12 @@ def setup():
                      kernel_size=kernel_size,
                      dropout_rate=dropout_rate)
     
-
+    file_logger.info("--- tranining parameters ---")
+    file_logger.info(f"seq_length: {seq_length}")
+    file_logger.info(f"net_filter_size: {net_filter_size}")
+    file_logger.info(f"net_seq_length: {net_seq_length}")
+    file_logger.info(f"kernel_size: {kernel_size}")
+    file_logger.info(f"dropout_rate: {dropout_rate}")
     # def model_init(m):
     #     if isinstance(m, torch.nn.Conv1d):
     #         torch.nn.init.normal_(m.weight, 0.0, 0.02)
@@ -106,17 +90,17 @@ def setup():
 
     model.load_state_dict(torch.load(r"models\automatic-ecg-diagnosis-pyTorch\pretrained-weights\model.pth")["model"])
     lst = model.lin.in_features
-    model.lin = nn.Linear(lst, 63)
+    model.lin = nn.Linear(lst, 7)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)     
     loss = torch.nn.BCEWithLogitsLoss()
 
     return device, loss, optimizer, model.to(device=device)
 
+
 def main():
-    batch_size = 32
-    train_seq, val_seq = ECGSequence.get_train_and_val(
-    args.path_to_hdf5, args.dataset_name, args.path_to_csv, batch_size, args.val_split)
+    train_seq, val_seq, _ = ECGSequence.get_train_and_val(
+    args.path_to_hdf5, args.dataset_name, args.path_to_csv, args.batch_size, args.val_split)
 
     device, criterion, optim, model = setup()
 
@@ -137,8 +121,8 @@ def main():
         k = 0
         F1 = 0
 
-        train_f1 = MultilabelAUPRC(num_labels=63).to(device=device)
-        val_f1 = MultilabelAUPRC(num_labels=63).to(device=device)
+        train_f1 = MultilabelAUPRC(num_labels=7).to(device=device)
+        val_f1 = MultilabelAUPRC(num_labels=7).to(device=device)
 
         with tqdm(train_seq, unit="batch") as train_bar:
             for signals, labels in train_bar:
@@ -224,6 +208,27 @@ def main():
     
     pd.DataFrame(df_data).to_csv(f"{save_dir}\logs.csv",index = False) #saving logs
 
+def get_args():
+    parser = ArgumentParser(add_help=True,
+                                     description='Train model to predict rage from the raw ecg tracing.')
+    parser.add_argument('--epochs', type=int, default=30,
+                        help='maximum number of epochs (default: 70)')
+    parser.add_argument("--batch_size", type=int, default=32,
+                        help="define the number of samples per each batch")
+    parser.add_argument('--lr', type=float, default=0.001,
+                        help='learning rate (default: 0.001)')
+    parser.add_argument('--dataset_name', default='tracings',
+                        help='traces dataset in the hdf5 file.')
+    parser.add_argument('--val_split', type=float, default=0.2)
+    parser.add_argument('--path_to_hdf5',
+                        help='path to file containing ECG traces',
+                        default=r"E:\Chetan\ECG\data\lovakant\exp2\12-lead.hdf5")
+    parser.add_argument('--path_to_csv',
+                        help='path to csv file containing attributes.',
+                        default=r"E:\Chetan\ECG\data\lovakant\exp2\12-lead-labels.csv")
+    args = parser.parse_args()
+
+    return args
 
 
 if __name__=="__main__":
