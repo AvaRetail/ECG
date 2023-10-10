@@ -8,14 +8,19 @@ import torch
 
 class ECGSequence():
     @classmethod
-    def get_train_and_val(cls, path_to_hdf5, hdf5_dset, path_to_csv, batch_size=8, val_split=0.3):
+    def get_train_and_val(cls, path_to_hdf5, hdf5_dset, path_to_csv, batch_size=8, split=0.1):
         
-        n_samples = len(pd.read_csv(path_to_csv).to_numpy()[:41000])
-        n_test = len(pd.read_csv(path_to_csv).to_numpy()[41000:])
-        n_train = math.ceil(n_samples*(1-val_split))
-        train_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, end_idx=n_train)
-        valid_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, start_idx=n_train)
-        test_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, start_idx = 41000, end_idx = 45131)
+        n_samples = len(pd.read_csv(path_to_csv).to_numpy())
+
+        val_split = split
+        
+        train_split = 1- 2*val_split
+        n_train = int(n_samples*train_split)
+        n_val = int(n_samples*val_split)
+
+        train_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, start_idx = 0, end_idx = n_train)
+        valid_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, start_idx = n_train, end_idx = n_train+n_val)
+        test_seq = cls(path_to_hdf5, hdf5_dset, path_to_csv, batch_size, start_idx = n_train+n_val, end_idx = n_samples)
         return train_seq, valid_seq, test_seq
 
     def __init__(self, path_to_hdf5, hdf5_dset, path_to_csv=None, batch_size=8,
