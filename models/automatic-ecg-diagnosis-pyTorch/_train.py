@@ -11,7 +11,8 @@ import os
 
 # importing functions from withing dir
 from dataset import ECGSequence
-from resnet import ResNet1d
+# from resnet import ResNet1d
+from _resnet import resnet34
 
 #importing functions from utils
 sys.path.append(r"E:\Chetan\ECG")
@@ -64,40 +65,41 @@ def setup():
 
     if not args.resume_training:
         N_LEADS = 12
-        N_CLASSES = 1 # will be converted to 7
-        seq_length = 4096
-        net_filter_size = [64, 128, 196, 256, 320]
-        net_seq_length = [4096, 1024, 256, 64, 16]
-        kernel_size = 21
-        dropout_rate = 0.8
+        # N_CLASSES = 1 # will be converted to 7
+        # seq_length = 4096
+        # net_filter_size = [64, 128, 196, 256, 320]
+        # net_seq_length = [4096, 1024, 256, 64, 16]
+        # kernel_size = 21
+        # dropout_rate = 0.8
 
-        model = ResNet1d(input_dim=(N_LEADS, seq_length),
-                        blocks_dim=list(zip(net_filter_size, net_seq_length)),
-                        n_classes=N_CLASSES,
-                        kernel_size=kernel_size,
-                        dropout_rate=dropout_rate)
-        
+        # model = ResNet1d(input_dim=(N_LEADS, seq_length),
+        #                 blocks_dim=list(zip(net_filter_size, net_seq_length)),
+        #                 n_classes=N_CLASSES,
+        #                 kernel_size=kernel_size,
+        #                 dropout_rate=dropout_rate)
+        model = resnet34(num_classes=args.n_classes, input_channels = N_LEADS)
+
         file_logger.info("--- tranining parameters ---")
-        file_logger.info(f"seq_length: {seq_length}")
-        file_logger.info(f"net_filter_size: {net_filter_size}")
-        file_logger.info(f"net_seq_length: {net_seq_length}")
-        file_logger.info(f"kernel_size: {kernel_size}")
-        file_logger.info(f"dropout_rate: {dropout_rate}")
+        # file_logger.info(f"seq_length: {seq_length}")
+        # file_logger.info(f"net_filter_size: {net_filter_size}")
+        # file_logger.info(f"net_seq_length: {net_seq_length}")
+        # file_logger.info(f"kernel_size: {kernel_size}")
+        # file_logger.info(f"dropout_rate: {dropout_rate}")
 
         def model_init(m):
             if isinstance(m, torch.nn.Conv1d):
-                torch.nn.init.normal_(m.weight, 0.0, 0.02)
+                torch.nn.init.normal_(m.weight, 0.0, 0.09)
 
             if isinstance(m, torch.nn.BatchNorm1d):
-                torch.nn.init.normal_(m.weight, 0.0,0.02)
+                torch.nn.init.normal_(m.weight, 0.0,0.09)
                 torch.nn.init.constant_(m.bias, 0.0)   
 
         model = model.apply(model_init)
 
         # model.load_state_dict(torch.load(args.pre_trained_pth)["model"])
         
-        lst = model.lin.in_features
-        model.lin = nn.Linear(lst, args.n_classes)
+        # lst = model.lin.in_features
+        # model.lin = nn.Linear(lst, args.n_classes)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)     
         loss = torch.nn.CrossEntropyLoss()
@@ -264,7 +266,7 @@ def get_args():
                         help='maximum number of epochs (default: 70)')
     parser.add_argument("--batch_size", type=int, default=32,
                         help="define the number of samples per each batch")
-    parser.add_argument('--lr', type=float, default=0.001,
+    parser.add_argument('--lr', type=float, default=0.0001,
                         help='learning rate (default: 0.001)')
     parser.add_argument('--dataset_name', default='tracings',
                         help='traces dataset in the hdf5 file.')

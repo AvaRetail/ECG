@@ -4,6 +4,7 @@ data/vit-data
 
 weights/
 .vscode/
+.vs/
 
 models/automatic-ecg-diagnosis-tf/dnn_predicts
 models/automatic-ecg-diagnosis-tf/outputs

@@ -136,7 +136,7 @@ def convert_labels_to_npy():
                 temp = pth
                 pth = pth.replace("RECORDS",str(fil))
                 try: 
-                    signals, fields =  wfdb.rdsamp(pth, sampto=4096)
+                    signals, fields =  wfdb.rdsamp(pth, sampfrom=500,sampto=4596)
                     string = fields["comments"][2]
                     matches = re.findall(pattern, string)
                     for j,match in enumerate(matches):
